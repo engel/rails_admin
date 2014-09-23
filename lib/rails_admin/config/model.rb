@@ -63,6 +63,10 @@ module RailsAdmin
         (@label_plural ||= {})[::I18n.locale] ||= abstract_model.model.model_name.human(count: Float::INFINITY, default: label.pluralize)
       end
 
+      register_instance_option :default_action do
+        @default_action ||= :index
+      end
+
       def pluralize(count)
         count == 1 ? label : label_plural
       end
