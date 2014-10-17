@@ -44,8 +44,19 @@ module RailsAdmin
     end
 
     def back_or_index
-      params[:return_to].presence && params[:return_to].include?(request.host) && (params[:return_to] != request.fullpath) ? params[:return_to] : index_path
+      return_to ||
+      index_path
     end
+    def return_to
+      if params[:return_to].presence && params[:return_to].include?(request.host) && (params[:return_to] != request.fullpath)
+
+        sanitize_return_to params[:return_to]
+      else
+        nil
+      end
+
+    end
+
 
     def get_sort_hash(model_config)
       abstract_model = model_config.abstract_model
@@ -79,9 +90,9 @@ module RailsAdmin
     def redirect_to_on_success
       notice = t('admin.flash.successful', name: @model_config.label, action: t("admin.actions.#{@action.key}.done"))
       if params[:_add_another]
-        redirect_to new_path(return_to: params[:return_to]), flash: {success: notice}
+        redirect_to new_path(return_to: sanitize_return_to(params[:return_to])), flash: {success: notice}
       elsif params[:_add_edit]
-        redirect_to edit_path(id: @object.id, return_to: params[:return_to]), flash: {success: notice}
+        redirect_to edit_path(id: @object.id, return_to: sanitize_return_to(params[:return_to])), flash: {success: notice}
       else
         redirect_to back_or_index, flash: {success: notice}
       end

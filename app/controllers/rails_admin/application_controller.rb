@@ -10,6 +10,7 @@ module RailsAdmin
   class ApplicationController < ::ApplicationController
     newrelic_ignore if defined?(NewRelic)
 
+    before_filter :_locale!
     before_filter :_authenticate!
     before_filter :_authorize!
     before_filter :_audit!
@@ -41,6 +42,10 @@ module RailsAdmin
 
     def _get_plugin_name
       @plugin_name_array ||= [RailsAdmin.config.main_app_name.is_a?(Proc) ? instance_eval(&RailsAdmin.config.main_app_name) : RailsAdmin.config.main_app_name].flatten
+    end
+
+    def _locale!
+      instance_eval(&RailsAdmin::Config.locale)
     end
 
     def _authenticate!

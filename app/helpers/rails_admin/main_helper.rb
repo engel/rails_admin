@@ -2,6 +2,18 @@ require 'builder'
 
 module RailsAdmin
   module MainHelper
+    def sanitize_return_to last_path
+      if (!last_path.blank?  )
+        uri = URI.parse(last_path)
+        puts "#{uri.component}"
+        patharray =  uri.path.split('/')
+        patharray.shift
+        patharray.shift
+        patharray.unshift "/#{I18n.locale}"
+        uri.path = patharray.join('/')
+        uri.to_s
+      end
+    end
     def rails_admin_form_for(*args, &block)
       options = args.extract_options!.reverse_merge(builder: RailsAdmin::FormBuilder)
       form_for(*(args << options), &block) << after_nested_form_callbacks

@@ -94,6 +94,10 @@ module RailsAdmin
         @authenticate || DEFAULT_AUTHENTICATION
       end
 
+      def locale(&blk)
+        @locale = blk if blk
+        @locale || :en
+      end
       # Setup auditing/history/versioning provider that observe objects lifecycle
       def audit_with(*args, &block)
         extension = args.shift
