@@ -26,7 +26,12 @@ module RailsAdmin
       end
 
       def all(options = {}, scope = nil)
-        scope ||= scoped
+        unless scope
+          scope = scoped
+          if scope.respond_to?(:current_locale)
+            scope = scope.current_locale
+          end
+        end
         scope = scope.includes(options[:include]) if options[:include]
         scope = scope.limit(options[:limit]) if options[:limit]
         scope = scope.where(primary_key => options[:bulk_ids]) if options[:bulk_ids]
