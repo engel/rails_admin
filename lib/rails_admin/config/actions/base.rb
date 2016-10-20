@@ -28,15 +28,18 @@ module RailsAdmin
           authorized?
         end
 
+        register_instance_option :enabled? do
+          bindings[:abstract_model].nil? || (
+            (only.nil? || [only].flatten.collect(&:to_s).include?(bindings[:abstract_model].to_s)) &&
+            ![except].flatten.collect(&:to_s).include?(bindings[:abstract_model].to_s) &&
+            !bindings[:abstract_model].config.excluded?
+          )
+        end
+
         register_instance_option :authorized? do
-          (
-            bindings[:controller].nil? || bindings[:controller].authorized?(authorization_key, bindings[:abstract_model], bindings[:object])
-          ) && (
-            bindings[:abstract_model].nil? || (
-              (only.nil? || [only].flatten.collect(&:to_s).include?(bindings[:abstract_model].to_s)) &&
-              ![except].flatten.collect(&:to_s).include?(bindings[:abstract_model].to_s) &&
-              bindings[:abstract_model].config.with(bindings).visible?
-          ))
+          enabled? && (
+            bindings[:controller].try(:authorization_adapter).nil? || bindings[:controller].authorization_adapter.authorized?(authorization_key, bindings[:abstract_model], bindings[:object])
+          )
         end
 
         # Is the action acting on the root level (Example: /admin/contact)
@@ -112,12 +115,11 @@ module RailsAdmin
 
         # Breadcrumb parent
         register_instance_option :breadcrumb_parent do
-          case
-          when root?
+          if root?
             [:dashboard]
-          when collection?
+          elsif collection?
             [:index, bindings[:abstract_model]]
-          when member?
+          elsif member?
             [:show, bindings[:abstract_model], bindings[:object]]
           end
         end

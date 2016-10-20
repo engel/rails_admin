@@ -16,7 +16,10 @@ en:
       is_exactly: Is exactly
       starts_with: Starts with
       ends_with: Ends with
+      too_many_objects: "Too many objects, use search box above"
+      no_objects: "No objects found"
     loading: "Loading..."
+    toggle_navigation: Toggle navigation
     home:
       name: "Home"
     pagination:
@@ -24,7 +27,6 @@ en:
       next: "Next &raquo;"
       truncate: "…"
     misc:
-      filter_date_format: "mm/dd/yy" # a combination of 'dd', 'mm' and 'yy' with any delimiter. No other interpolation will be done!
       search: "Search"
       filter: "Filter"
       refresh: "Refresh"
@@ -42,6 +44,7 @@ en:
       navigation_static_label: "Links"
       log_out: "Log out"
       ago: "ago"
+      more: "Plus %{count} more %{models_name}"
     flash:
       successful: "%{name} successfully %{action}"
       error: "%{name} failed to be %{action}"
@@ -50,7 +53,7 @@ en:
       object_not_found: "%{model} with id '%{id}' could not be found"
     table_headers:
       model_name: "Model name"
-      last_used: "Last used"
+      last_created: "Last created"
       records: "Records"
       username: "User"
       changes: "Changes"

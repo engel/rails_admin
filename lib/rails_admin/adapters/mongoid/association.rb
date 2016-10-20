@@ -3,6 +3,7 @@ module RailsAdmin
     module Mongoid
       class Association
         attr_reader :association, :model
+
         def initialize(association, model)
           @association = association
           @model = model
@@ -27,7 +28,7 @@ module RailsAdmin
           when :has_and_belongs_to_many, :references_and_referenced_in_many
             :has_and_belongs_to_many
           else
-            fail("Unknown association type: #{macro.inspect}")
+            raise("Unknown association type: #{macro.inspect}")
           end
         end
 
@@ -46,6 +47,11 @@ module RailsAdmin
         def foreign_key
           return unless [:embeds_one, :embeds_many].exclude?(macro.to_sym)
           association.foreign_key.to_sym rescue nil
+        end
+
+        def foreign_key_nullable?
+          return if foreign_key.nil?
+          true
         end
 
         def foreign_type
@@ -77,7 +83,7 @@ module RailsAdmin
         def nested_options
           nested = nested_attributes_options.try { |o| o[name] }
           if !nested && [:embeds_one, :embeds_many].include?(macro.to_sym) && !association.cyclic
-            fail <<-MSG.gsub(/^\s+/, '')
+            raise <<-MSG.gsub(/^\s+/, '')
             Embbeded association without accepts_nested_attributes_for can't be handled by RailsAdmin,
             because embedded model doesn't have top-level access.
             Please add `accepts_nested_attributes_for :#{association.name}' line to `#{model}' model.

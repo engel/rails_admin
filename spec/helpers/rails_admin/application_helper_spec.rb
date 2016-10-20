@@ -14,7 +14,7 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
   describe '#authorized?' do
     before do
       allow(RailsAdmin.config).to receive(:_current_user).and_return(FactoryGirl.create(:user))
-      helper.instance_variable_set('@authorization_adapter', RailsAdmin::AUTHORIZATION_ADAPTERS[:cancan].new(RailsAdmin.config, TestAbility))
+      allow(helper.controller).to receive(:authorization_adapter).and_return(RailsAdmin::AUTHORIZATION_ADAPTERS[:cancan].new(RailsAdmin.config, TestAbility))
     end
 
     it 'doesn\'t test unpersisted objects' do
@@ -69,8 +69,8 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
             member :test_bindings do
               visible do
                 bindings[:controller].is_a?(ActionView::TestCase::TestController) &&
-                bindings[:abstract_model].model == Team &&
-                bindings[:object].is_a?(Team)
+                  bindings[:abstract_model].model == Team &&
+                  bindings[:object].is_a?(Team)
               end
             end
           end
@@ -97,8 +97,8 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
             member :test_bindings do
               visible do
                 bindings[:controller].is_a?(ActionView::TestCase::TestController) &&
-                bindings[:abstract_model].model == Team &&
-                bindings[:object].is_a?(Team)
+                  bindings[:abstract_model].model == Team &&
+                  bindings[:object].is_a?(Team)
               end
             end
           end
@@ -107,6 +107,21 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
         expect(helper.actions(:all, RailsAdmin::AbstractModel.new(Team), Team.new).collect(&:custom_key)).to eq([:test_bindings])
         expect(helper.actions(:all, RailsAdmin::AbstractModel.new(Team), Player.new).collect(&:custom_key)).to eq([])
         expect(helper.actions(:all, RailsAdmin::AbstractModel.new(Player), Team.new).collect(&:custom_key)).to eq([])
+      end
+    end
+
+    describe '#logout_method' do
+      it 'defaults to :delete when Devise is not defined' do
+        allow(Object).to receive(:defined?).with(Devise).and_return(false)
+
+        expect(helper.logout_method).to eq(:delete)
+      end
+
+      it 'uses first sign out method from Devise when it is defined' do
+        allow(Object).to receive(:defined?).with(Devise).and_return(true)
+
+        expect(Devise).to receive(:sign_out_via).and_return([:whatever_defined_on_devise, :something_ignored])
+        expect(helper.logout_method).to eq(:whatever_defined_on_devise)
       end
     end
 
@@ -140,12 +155,11 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
 
         expect(helper.wording_for(:link, :new, RailsAdmin::AbstractModel.new(Team))).to eq('Add a new Team')
       end
-
     end
 
     describe '#breadcrumb' do
       it 'gives us a breadcrumb' do
-        @action = RailsAdmin::Config::Actions.find(:edit, abstract_model: RailsAdmin::AbstractModel.new(Team), object: Team.new(name: 'the avengers'))
+        @action = RailsAdmin::Config::Actions.find(:edit, abstract_model: RailsAdmin::AbstractModel.new(Team), object: FactoryGirl.create(:team, name: 'the avengers'))
         bc = helper.breadcrumb
         expect(bc).to match(/Dashboard/) # dashboard
         expect(bc).to match(/Teams/) # list
@@ -177,7 +191,7 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
 
         @action = RailsAdmin::Config::Actions.find :show
         @abstract_model = RailsAdmin::AbstractModel.new(Team)
-        @object = Team.new(name: 'the avengers')
+        @object = FactoryGirl.create(:team, name: 'the avengers')
 
         expect(helper.menu_for(:root)).to match(/Dashboard/)
         expect(helper.menu_for(:collection, @abstract_model)).to match(/List/)
@@ -208,7 +222,7 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
         RailsAdmin.config do |config|
           config.included_models = [Ball, Comment]
         end
-        expect(helper.main_navigation).to match(/(nav\-header).*(Navigation).*(Balls).*(Comments)/m)
+        expect(helper.main_navigation).to match(/(dropdown-header).*(Navigation).*(Balls).*(Comments)/m)
       end
 
       it 'does not draw empty navigation labels' do
@@ -221,8 +235,8 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
             label_plural 'Confirmed'
           end
         end
-        expect(helper.main_navigation).to match(/(nav\-header).*(Navigation).*(Balls).*(Commentz).*(Confirmed)/m)
-        expect(helper.main_navigation).not_to match(/(nav\-header).*(Navigation).*(Balls).*(Commentz).*(Confirmed).*(Comment)/m)
+        expect(helper.main_navigation).to match(/(dropdown-header).*(Navigation).*(Balls).*(Commentz).*(Confirmed)/m)
+        expect(helper.main_navigation).not_to match(/(dropdown-header).*(Navigation).*(Balls).*(Commentz).*(Confirmed).*(Comment)/m)
       end
 
       it 'does not show unvisible models' do
@@ -233,7 +247,7 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
           end
         end
         result = helper.main_navigation
-        expect(result).to match(/(nav\-header).*(Navigation).*(Balls)/m)
+        expect(result).to match(/(dropdown-header).*(Navigation).*(Balls)/m)
         expect(result).not_to match('Comments')
       end
 
@@ -244,14 +258,14 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
             hide
           end
         end
-        expect(helper.main_navigation).to match(/(nav\-header).*(Navigation).*(Hardballs)/m)
+        expect(helper.main_navigation).to match(/(dropdown\-header).*(Navigation).*(Hardballs)/m)
       end
 
       it 'shows children of excluded models' do
         RailsAdmin.config do |config|
           config.included_models = [Hardball]
         end
-        expect(helper.main_navigation).to match(/(nav\-header).*(Navigation).*(Hardballs)/m)
+        expect(helper.main_navigation).to match(/(dropdown-header).*(Navigation).*(Hardballs)/m)
       end
 
       it 'nests in navigation label' do
@@ -261,7 +275,7 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
             navigation_label 'commentable'
           end
         end
-        expect(helper.main_navigation).to match(/(nav\-header).*(Commentable).*(Comments)/m)
+        expect(helper.main_navigation).to match(/(dropdown\-header).*(Commentable).*(Comments)/m)
       end
 
       it 'nests in parent model' do
@@ -348,6 +362,51 @@ describe RailsAdmin::ApplicationHelper, type: :helper do
 
         expect(helper.bulk_menu(RailsAdmin::AbstractModel.new(Player))).not_to match('blub')
       end
+    end
+
+    describe '#edit_user_link' do
+      it "don't include email column" do
+        allow(helper).to receive(:_current_user).and_return(FactoryGirl.create(:player))
+        result = helper.edit_user_link
+        expect(result).to eq nil
+      end
+
+      it 'include email column' do
+        allow(helper).to receive(:_current_user).and_return(FactoryGirl.create(:user))
+        result = helper.edit_user_link
+        expect(result).to match('href')
+      end
+
+      it 'show gravatar' do
+        allow(helper).to receive(:_current_user).and_return(FactoryGirl.create(:user))
+        result = helper.edit_user_link
+        expect(result).to include('gravatar')
+      end
+
+      it "don't show gravatar" do
+        RailsAdmin.config do |config|
+          config.show_gravatar = false
+        end
+
+        allow(helper).to receive(:_current_user).and_return(FactoryGirl.create(:user))
+        result = helper.edit_user_link
+        expect(result).not_to include('gravatar')
+      end
+    end
+  end
+
+  describe '#flash_alert_class' do
+    it 'makes errors red with alert-danger' do
+      expect(helper.flash_alert_class('error')).to eq('alert-danger')
+    end
+    it 'makes alerts yellow with alert-warning' do
+      expect(helper.flash_alert_class('alert')).to eq('alert-warning')
+    end
+    it 'makes notices blue with alert-info' do
+      expect(helper.flash_alert_class('notice')).to eq('alert-info')
+    end
+    it 'prefixes others with "alert-"' do
+      expect(helper.flash_alert_class('foo')).to eq('alert-foo')
     end
   end
 end

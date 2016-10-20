@@ -6,21 +6,22 @@ module RailsAdmin
 
     layout :get_layout
 
-    before_filter :get_model, except: RailsAdmin::Config::Actions.all(:root).collect(&:action_name)
-    before_filter :get_object, only: RailsAdmin::Config::Actions.all(:member).collect(&:action_name)
-    before_filter :check_for_cancel
+    before_action :get_model, except: RailsAdmin::Config::Actions.all(:root).collect(&:action_name)
+    before_action :get_object, only: RailsAdmin::Config::Actions.all(:member).collect(&:action_name)
+    before_action :check_for_cancel
 
     RailsAdmin::Config::Actions.all.each do |action|
-      class_eval %{
+      class_eval <<-EOS, __FILE__, __LINE__ + 1
         def #{action.action_name}
           action = RailsAdmin::Config::Actions.find('#{action.action_name}'.to_sym)
           @authorization_adapter.try(:authorize, action.authorization_key, @abstract_model, @object)
           @action = action.with({controller: self, abstract_model: @abstract_model, object: @object})
+          fail(ActionNotAllowed) unless @action.enabled?
           @page_name = wording_for(:title)
 
           instance_eval &@action.controller
         end
-      }
+      EOS
     end
 
     def bulk_action
@@ -33,7 +34,6 @@ module RailsAdmin
         scope = scope.merge(auth_scope)
       end
       scope = scope.instance_eval(&additional_scope) if additional_scope
-
       get_collection(model_config, scope, pagination)
     end
 
@@ -61,12 +61,10 @@ module RailsAdmin
     def get_sort_hash(model_config)
       abstract_model = model_config.abstract_model
       params[:sort] = params[:sort_reverse] = nil unless model_config.list.fields.collect { |f| f.name.to_s }.include? params[:sort]
-
       params[:sort] ||= model_config.list.sort_by.to_s
       params[:sort_reverse] ||= 'false'
 
       field = model_config.list.fields.detect { |f| f.name.to_s == params[:sort] }
-
       column = begin
         if field.nil? || field.sortable == true # use params[:sort] on the base table
           "#{abstract_model.table_name}.#{params[:sort]}"
@@ -88,7 +86,7 @@ module RailsAdmin
     end
 
     def redirect_to_on_success
-      notice = t('admin.flash.successful', name: @model_config.label, action: t("admin.actions.#{@action.key}.done"))
+      notice = I18n.t('admin.flash.successful', name: @model_config.label, action: I18n.t("admin.actions.#{@action.key}.done"))
       if params[:_add_another]
         redirect_to new_path(return_to: sanitize_return_to(params[:return_to])), flash: {success: notice}
       elsif params[:_add_edit]
@@ -98,11 +96,15 @@ module RailsAdmin
       end
     end
 
+    def visible_fields(action, model_config = @model_config)
+      model_config.send(action).with(controller: self, view: view_context, object: @object).visible_fields
+    end
+
     def sanitize_params_for!(action, model_config = @model_config, target_params = params[@abstract_model.param_key])
       return unless target_params.present?
-      fields = model_config.send(action).with(controller: self, view: view_context, object: @object).visible_fields
+      fields = visible_fields(action, model_config)
       allowed_methods = fields.collect(&:allowed_methods).flatten.uniq.collect(&:to_s) << 'id' << '_destroy'
-      fields.each { |f| f.parse_input(target_params) }
+      fields.each { |field| field.parse_input(target_params) }
       target_params.slice!(*allowed_methods)
       target_params.permit! if target_params.respond_to?(:permit!)
       fields.select(&:nested_form).each do |association|
@@ -114,22 +116,22 @@ module RailsAdmin
     end
 
     def handle_save_error(whereto = :new)
-      flash.now[:error] = t('admin.flash.error', name: @model_config.label, action: t("admin.actions.#{@action.key}.done").html_safe).html_safe
-      flash.now[:error] += %{<br>- #{@object.errors.full_messages.join("<br>- ")}}.html_safe
+      flash.now[:error] = I18n.t('admin.flash.error', name: @model_config.label, action: I18n.t("admin.actions.#{@action.key}.done").html_safe).html_safe
+      flash.now[:error] += %(<br>- #{@object.errors.full_messages.join('<br>- ')}).html_safe
 
       respond_to do |format|
         format.html { render whereto, status: :not_acceptable }
-        format.js   { render whereto, layout: false, status: :not_acceptable  }
+        format.js   { render whereto, layout: false, status: :not_acceptable }
       end
     end
 
     def check_for_cancel
       return unless params[:_continue] || (params[:bulk_action] && !params[:bulk_ids])
-      redirect_to(back_or_index, flash: {info: t('admin.flash.noaction')})
+      redirect_to(back_or_index, notice: I18n.t('admin.flash.noaction'))
     end
 
     def get_collection(model_config, scope, pagination)
-      associations = model_config.list.fields.select { |f| f.type == :belongs_to_association && !f.polymorphic? }.collect { |f| f.association.name }
+      associations = model_config.list.fields.select { |f| f.try(:eager_load?) }.collect { |f| f.association.name }
       options = {}
       options = options.merge(page: (params[Kaminari.config.param_name] || 1).to_i, per: (params[:per] || model_config.list.items_per_page)) if pagination
       options = options.merge(include: associations) unless associations.blank?

@@ -2,17 +2,16 @@ require 'spec_helper'
 require 'csv'
 
 describe 'RailsAdmin Export', type: :request do
-
   subject { page }
 
   before do
     Comment.all.collect(&:destroy) # rspec bug => doesn't get destroyed with transaction
 
-    @players = 4.times.collect { FactoryGirl.create :player }
+    @players = FactoryGirl.create_list(:player, 4)
     @player = @players.first
     @player.team = FactoryGirl.create :team
     @player.draft = FactoryGirl.create :draft
-    @player.comments = (@comments = 2.times.collect { FactoryGirl.create(:comment) })
+    @player.comments = (@comments = Array.new(2) { FactoryGirl.create(:comment) })
     @player.save
 
     @abstract_model = RailsAdmin::AbstractModel.new(Player)
@@ -29,7 +28,6 @@ describe 'RailsAdmin Export', type: :request do
   end
 
   describe 'POST /admin/players/export (prompt)' do
-
     it 'allows to export to CSV with associations and default schema, containing properly translated header and follow configuration' do
       RailsAdmin.config do |c|
         c.model Player do
@@ -48,10 +46,10 @@ describe 'RailsAdmin Export', type: :request do
       click_button 'Export to csv'
       csv = CSV.parse page.driver.response.body.force_encoding('utf-8') # comes through as us-ascii on some platforms
       expect(csv[0]).to match_array ['Id', 'Created at', 'Updated at', 'Deleted at', 'Name', 'Position',
-                                     'Number', 'Retired', 'Injured', 'Born on', 'Notes', 'Suspended', 'Id [Team]', 'Created at [Team]',
+                                     'Number', 'Retired', 'Injured', 'Born on', 'Notes', 'Suspended', 'Formation', 'Id [Team]', 'Created at [Team]',
                                      'Updated at [Team]', 'Name [Team]', 'Logo url [Team]', 'Team Manager [Team]', 'Ballpark [Team]',
                                      'Mascot [Team]', 'Founded [Team]', 'Wins [Team]', 'Losses [Team]', 'Win percentage [Team]',
-                                     'Revenue [Team]', 'Color [Team]', 'Custom field [Team]', 'Id [Draft]', 'Created at [Draft]',
+                                     'Revenue [Team]', 'Color [Team]', 'Custom field [Team]', 'Main Sponsor [Team]', 'Id [Draft]', 'Created at [Draft]',
                                      'Updated at [Draft]', 'Date [Draft]', 'Round [Draft]', 'Pick [Draft]', 'Overall [Draft]',
                                      'College [Draft]', 'Notes [Draft]', 'Id [Comments]', 'Content [Comments]', 'Created at [Comments]',
                                      'Updated at [Comments]']
@@ -78,7 +76,7 @@ describe 'RailsAdmin Export', type: :request do
       # and Mongoid with ActiveModel 3.1 does not support to_xml's :include options
       # (due change of implementation in ActiveModel::Serializers between 3.1 and 3.2)
       if RUBY_VERSION =~ /1\.9/ &&
-          (CI_ORM != :mongoid || (CI_ORM == :mongoid && ActiveModel::VERSION::STRING >= '3.2'))
+         (CI_ORM != :mongoid || (CI_ORM == :mongoid && ActiveModel::VERSION::STRING >= '3.2'))
         is_expected.to have_content @player.team.name
       end
     end

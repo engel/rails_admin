@@ -1,11 +1,11 @@
-class CreateHistoriesTable < ActiveRecord::Migration
+class CreateHistoriesTable < MigrationBase
   def self.up
     create_table :histories do |t|
       t.string :message # title, name, or object_id
       t.string :username
       t.integer :item
       t.string :table
-      t.timestamps
+      t.timestamps null: false
     end
     add_index(:histories, [:item, :table])
   end

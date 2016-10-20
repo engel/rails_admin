@@ -1,10 +1,10 @@
-class CreateCmsBasicPages < ActiveRecord::Migration
+class CreateCmsBasicPages < MigrationBase
   def self.up
     create_table :cms_basic_pages do |t|
       t.string :title
       t.text :content
 
-      t.timestamps
+      t.timestamps null: false
     end
   end
 

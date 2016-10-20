@@ -40,7 +40,6 @@ module RailsAdmin
             end
 
             respond_to do |format|
-
               format.html do
                 render @action.template_name, status: (flash[:error].present? ? :not_found : 200)
               end
@@ -72,18 +71,18 @@ module RailsAdmin
               end
 
               format.csv do
-                header, encoding, output = CSVConverter.new(@objects, @schema).to_csv(params[:csv_options])
+                header, encoding, output = CSVConverter.new(@objects, @schema).to_csv(params[:csv_options].permit!.to_h)
                 if params[:send_data]
                   send_data output,
                             type: "text/csv; charset=#{encoding}; #{'header=present' if header}",
                             disposition: "attachment; filename=#{params[:model_name]}_#{DateTime.now.strftime('%Y-%m-%d_%Hh%Mm%S')}.csv"
+                elsif Rails.version.to_s >= '5'
+                  render plain: output
                 else
                   render text: output
                 end
               end
-
             end
-
           end
         end
 

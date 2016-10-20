@@ -12,18 +12,25 @@ module RailsAdmin
         )
 
         object_infos +
-        visible_groups(options[:model_config], generator_action(options[:action], options[:nested_in])).collect do |fieldset|
-          fieldset_for fieldset, options[:nested_in]
-        end.join.html_safe +
-        (options[:nested_in] ? '' : @template.render(partial: 'rails_admin/main/submit_buttons'))
+          visible_groups(options[:model_config], generator_action(options[:action], options[:nested_in])).collect do |fieldset|
+            fieldset_for fieldset, options[:nested_in]
+          end.join.html_safe +
+          (options[:nested_in] ? '' : @template.render(partial: 'rails_admin/main/submit_buttons'))
       end
     end
 
     def fieldset_for(fieldset, nested_in)
-      return unless (fields = fieldset.with(form: self, object: @object, view: @template, controller: @template.controller).visible_fields).length > 0
+      fields = fieldset.with(
+        form: self,
+        object: @object,
+        view: @template,
+        controller: @template.controller,
+      ).visible_fields
+      return if fields.empty?
+
       @template.content_tag :fieldset do
         contents = []
-        contents << @template.content_tag(:legend, %(<i class="icon-chevron-#{(fieldset.active? ? 'down' : 'right')}"></i> #{fieldset.label}).html_safe, style: "#{fieldset.name == :default ? 'display:none' : ''}")
+        contents << @template.content_tag(:legend, %(<i class="icon-chevron-#{(fieldset.active? ? 'down' : 'right')}"></i> #{fieldset.label}).html_safe, style: fieldset.name == :default ? 'display:none' : '')
         contents << @template.content_tag(:p, fieldset.help) if fieldset.help.present?
         contents << fields.collect { |field| field_wrapper_for(field, nested_in) }.join
         contents.join.html_safe
@@ -34,8 +41,9 @@ module RailsAdmin
       if field.label
         # do not show nested field if the target is the origin
         unless nested_field_association?(field, nested_in)
-          @template.content_tag(:div, class: "control-group #{field.type_css_class} #{field.css_class} #{'error' if field.errors.present?}", id: "#{dom_id(field)}_field") do
-            label(field.method_name, capitalize_first_letter(field.label), class: 'control-label') + (field.nested_form ? field_for(field) : input_for(field))
+          @template.content_tag(:div, class: "form-group control-group #{field.type_css_class} #{field.css_class} #{'error' if field.errors.present?}", id: "#{dom_id(field)}_field") do
+            label(field.method_name, capitalize_first_letter(field.label), class: 'col-sm-2 control-label') +
+              (field.nested_form ? field_for(field) : input_for(field))
           end
         end
       else
@@ -44,27 +52,25 @@ module RailsAdmin
     end
 
     def input_for(field)
-      @template.content_tag(:div, class: 'controls') do
+      css = 'col-sm-10 controls'
+      css += ' has-error' if field.errors.present?
+      @template.content_tag(:div, class: css) do
         field_for(field) +
-        errors_for(field) +
-        help_for(field)
+          errors_for(field) +
+          help_for(field)
       end
     end
 
     def errors_for(field)
-      field.errors.present? ? @template.content_tag(:span, field.errors.to_sentence, class: 'help-inline') : ''.html_safe
+      field.errors.present? ? @template.content_tag(:span, field.errors.to_sentence, class: 'help-inline text-danger') : ''.html_safe
     end
 
     def help_for(field)
-      field.help.present? ? @template.content_tag(:p, field.help, class: 'help-block') : ''.html_safe
+      field.help.present? ? @template.content_tag(:span, field.help, class: 'help-block') : ''.html_safe
     end
 
     def field_for(field)
-      if field.read_only?
-        field.pretty_value.to_s.html_safe
-      else
-        field.render
-      end
+      field.read_only? ? @template.content_tag(:div, field.pretty_value, class: 'form-control-static') : field.render
     end
 
     def object_infos
@@ -132,7 +138,7 @@ module RailsAdmin
 
     def nested_field_association?(field, nested_in)
       field.inverse_of.presence && nested_in.presence && field.inverse_of == nested_in.name &&
-        (@template.instance_variable_get(:@model_config).abstract_model == field.associated_model_config.abstract_model ||
+        (@template.instance_variable_get(:@model_config).abstract_model == field.abstract_model ||
          field.name == nested_in.inverse_of)
     end
   end

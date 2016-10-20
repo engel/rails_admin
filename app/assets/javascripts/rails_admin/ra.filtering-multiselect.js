@@ -17,6 +17,7 @@
         return { query: query };
       },
       sortable: false,
+      removable: true,
       regional: {
         up: "Up",
         down: "Down",
@@ -24,8 +25,7 @@
         chooseAll: "Choose all",
         chosen: "Chosen records",
         clearAll: "Clear all",
-        remove: "Remove",
-        selectChoice: "Select your choice(s) and click"
+        remove: "Remove"
       },
       searchDelay: 400,
       remote_source: null,
@@ -48,7 +48,7 @@
 
       this.header = $('<div class="ra-multiselect-header ui-helper-clearfix">');
 
-      this.filter = $('<input type="search" placeholder="' + this.options.regional.search + '" class="ra-multiselect-search"/>');
+      this.filter = $('<input type="search" placeholder="' + this.options.regional.search + '" class="form-control ra-multiselect-search"/>');
 
       this.header.append(this.filter);
 
@@ -68,39 +68,49 @@
 
       this.collection = $('<select multiple="multiple"></select>');
 
-      this.collection.addClass("ra-multiselect-collection");
-      
+      this.collection.addClass("form-control ra-multiselect-collection");
+
       this.addAll = $('<a href="#" class="ra-multiselect-item-add-all"><span class="ui-icon ui-icon-circle-triangle-e"></span>' + this.options.regional.chooseAll + '</a>');
-      
+
       this.columns.left.html(this.collection)
                           .append(this.addAll);
-      
+
       this.collection.wrap('<div class="wrapper"/>');
-      
-      
+
+
       this.add = $('<a href="#" class="ui-icon ui-icon-circle-triangle-e ra-multiselect-item-add">' + this.options.regional.add + '</a>');
+      this.columns.center.append(this.add);
 
-      this.remove = $('<a href="#" class="ui-icon ui-icon-circle-triangle-w ra-multiselect-item-remove">' + this.options.regional.remove + '</a>');
+      if (this.options.removable) {
+        this.remove = $('<a href="#" class="ui-icon ui-icon-circle-triangle-w ra-multiselect-item-remove">' + this.options.regional.remove + '</a>');
+        this.columns.center.append(this.remove);
+      }
 
-      this.columns.center.append(this.add).append(this.remove)
       if (this.options.sortable) {
         this.up = $('<a href="#" class="ui-icon ui-icon-circle-triangle-n ra-multiselect-item-up">' + this.options.regional.up + '</a>');
         this.down = $('<a href="#" class="ui-icon ui-icon-circle-triangle-s ra-multiselect-item-down">' + this.options.regional.down + '</a>');
         this.columns.center.append(this.up).append(this.down);
       }
 
-      this.selection = $('<select class="ra-multiselect-selection" multiple="multiple"></select>');
-      
-      
+      this.selection = $('<select class="form-control ra-multiselect-selection" multiple="multiple"></select>');
+      this.columns.right.append(this.selection);
 
-      this.removeAll = $('<a href="#" class="ra-multiselect-item-remove-all"><span class="ui-icon ui-icon-circle-triangle-w"></span>' + this.options.regional.clearAll + '</a>');
 
-      this.columns.right.append(this.selection)
-                           .append(this.removeAll);
-      
+      if (this.options.removable) {
+        this.removeAll = $('<a href="#" class="ra-multiselect-item-remove-all"><span class="ui-icon ui-icon-circle-triangle-w"></span>' + this.options.regional.clearAll + '</a>');
+        this.columns.right.append(this.removeAll);
+      }
+
       this.selection.wrap('<div class="wrapper"/>');
 
       this.element.css({display: "none"});
+
+      this.tooManyObjectsPlaceholder = $('<option disabled="disabled" />').text(RailsAdmin.I18n.t("too_many_objects"));
+      this.noObjectsPlaceholder = $('<option disabled="disabled" />').text(RailsAdmin.I18n.t("no_objects"))
+
+      if(this.options.xhr){
+        this.collection.append(this.tooManyObjectsPlaceholder);
+      }
     },
 
     _bindEvents: function() {
@@ -116,24 +126,26 @@
       /* Add to selection */
       this.add.click(function(e){
         widget._select($(':selected', widget.collection));
-        
+
         e.preventDefault();
         widget.selection.trigger('change');
       });
 
-      /* Remove all from selection */
-      this.removeAll.click(function(e){
-        widget._deSelect($('option', widget.selection));
-        e.preventDefault();
-        widget.selection.trigger('change');
-      });
+      if (this.options.removable) {
+        /* Remove all from selection */
+        this.removeAll.click(function(e){
+          widget._deSelect($('option', widget.selection));
+          e.preventDefault();
+          widget.selection.trigger('change');
+        });
 
-      /* Remove from selection */
-      this.remove.click(function(e){
-        widget._deSelect($(':selected', widget.selection));
-        e.preventDefault();
-        widget.selection.trigger('change');
-      });
+        /* Remove from selection */
+        this.remove.click(function(e){
+          widget._deSelect($(':selected', widget.selection));
+          e.preventDefault();
+          widget.selection.trigger('change');
+        });
+      }
 
       var timeout = null;
       if(this.options.sortable) {
@@ -163,27 +175,48 @@
     _queryFilter: function(val) {
       var widget = this;
       widget._query(val, function(matches) {
+
+        var filtered = [];
         var i;
-        widget.collection.html('');
-        for (i in matches) {
-          if (matches.hasOwnProperty(i) && !widget.selected(matches[i].id)) {
-            widget.collection.append(
-              $('<option></option>').attr('value', matches[i].id).attr('title', matches[i].label).text(matches[i].label)
-            );
+
+        for (i = 0; i < matches.length; i++) {
+          if (!widget.selected(matches[i].id)) {
+            filtered.push(i);
           }
+        }
+        if (filtered.length > 0) {
+          widget.collection[0].innerHTML = '';
+          var filteredContainer = [];
+          for (i = 0; i < filtered.length; i++) {
+            var newOptions = '<option value="'+matches[filtered[i]].id+'" title="'+matches[filtered[i]].label+'">'+matches[filtered[i]].label+'</option>';
+            filteredContainer.push(newOptions);
+          }
+          widget.collection[0].innerHTML = filteredContainer.join("");
+        } else {
+          widget.collection[0].innerHTML = widget.noObjectsPlaceholder;
         }
       });
     },
 
+    /*
+     * Cache key is stored in the format `o_<option value>` to avoid JS
+     * engine coercing string keys to int keys, and thereby preserving
+     * the insertion order. The value for each key is in turn an object
+     * that stores the option tag's HTML text and the value. Example:
+     * cache = {
+     *    'o_271': { id: 271, value: 'CartItem #271'},
+     *    'o_270': { id: 270, value: 'CartItem #270'}
+     * }
+     */
     _buildCache: function(options) {
       var widget = this;
 
       this.element.find("option").each(function(i, option) {
         if (option.selected) {
-          widget._cache[option.value] = option.innerHTML;
+          widget._cache['o_' + option.value] = {id: option.value, value: option.innerHTML};
           $(option).clone().appendTo(widget.selection).attr("selected", false).attr("title", $(option).text());
         } else {
-          widget._cache[option.value] = option.innerHTML;
+          widget._cache['o_' + option.value] = {id: option.value, value: option.innerHTML};
           $(option).clone().appendTo(widget.collection).attr("selected", false).attr("title", $(option).text());
         }
       });
@@ -206,12 +239,14 @@
         if (!this.options.xhr) {
           for (i in this._cache) {
             if (this._cache.hasOwnProperty(i)) {
-              matches.push({id: i, label: this._cache[i]});
+              option = this._cache[i];
+              matches.push({id: option.id, label: option.value});
             }
           }
+          success.apply(this, [matches]);
+        } else {
+          this.collection.html(this.tooManyObjectsPlaceholder);
         }
-
-        success.apply(this, [matches]);
 
       } else {
 
@@ -231,8 +266,9 @@
           query = new RegExp(query + '.*', 'i');
 
           for (i in this._cache) {
-            if (this._cache.hasOwnProperty(i) && query.test(this._cache[i])) {
-              matches.push({id: i, label: this._cache[i]});
+            if (this._cache.hasOwnProperty(i) && query.test(this._cache[i]['value'])) {
+              option = this._cache[i];
+              matches.push({id: option.id, label: option.value});
             }
           }
 
@@ -281,7 +317,9 @@
     },
 
     selected: function(value) {
-      return this.element.find('option[value="' + value + '"]').attr("selected");
+      if (this.selection[0].querySelectorAll('option[value="' + value + '"]')[0]) {
+        return true;
+      }
     },
 
     destroy: function() {

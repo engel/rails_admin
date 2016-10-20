@@ -1,9 +1,7 @@
 require 'spec_helper'
 
 describe RailsAdmin::Config do
-
   describe '.included_models' do
-
     it 'only uses included models' do
       RailsAdmin.config.included_models = [Team, League]
       expect(RailsAdmin::AbstractModel.all.collect(&:model)).to eq([League, Team]) # it gets sorted
@@ -38,45 +36,38 @@ describe RailsAdmin::Config do
   describe '.add_extension' do
     before do
       silence_warnings do
-        RailsAdmin::EXTENSIONS = []
+        RailsAdmin::EXTENSIONS = [] # rubocop:disable MutableConstant
       end
     end
 
     it 'registers the extension with RailsAdmin' do
       RailsAdmin.add_extension(:example, ExampleModule)
-      expect(RailsAdmin::EXTENSIONS.select { |name| name == :example }.length).to eq(1)
+      expect(RailsAdmin::EXTENSIONS.count { |name| name == :example }).to eq(1)
     end
 
     context 'given an extension with an authorization adapter' do
       it 'registers the adapter' do
-        RailsAdmin.add_extension(:example, ExampleModule,
-                                 authorization: true
-        )
+        RailsAdmin.add_extension(:example, ExampleModule, authorization: true)
         expect(RailsAdmin::AUTHORIZATION_ADAPTERS[:example]).to eq(ExampleModule::AuthorizationAdapter)
       end
     end
 
     context 'given an extension with an auditing adapter' do
       it 'registers the adapter' do
-        RailsAdmin.add_extension(:example, ExampleModule,
-                                 auditing: true
-        )
+        RailsAdmin.add_extension(:example, ExampleModule, auditing: true)
         expect(RailsAdmin::AUDITING_ADAPTERS[:example]).to eq(ExampleModule::AuditingAdapter)
       end
     end
 
     context 'given an extension with a configuration adapter' do
       it 'registers the adapter' do
-        RailsAdmin.add_extension(:example, ExampleModule,
-                                 configuration: true
-        )
+        RailsAdmin.add_extension(:example, ExampleModule, configuration: true)
         expect(RailsAdmin::CONFIGURATION_ADAPTERS[:example]).to eq(ExampleModule::ConfigurationAdapter)
       end
     end
   end
 
   describe '.main_app_name' do
-
     it 'as a default meaningful dynamic value' do
       expect(RailsAdmin.config.main_app_name.call).to eq(['Dummy App', 'Admin'])
     end
@@ -92,9 +83,7 @@ describe RailsAdmin::Config do
   describe '.authorize_with' do
     context 'given a key for a extension with authorization' do
       before do
-        RailsAdmin.add_extension(:example, ExampleModule,
-                                 authorization: true
-        )
+        RailsAdmin.add_extension(:example, ExampleModule, authorization: true)
       end
 
       it 'initializes the authorization adapter' do
@@ -119,9 +108,7 @@ describe RailsAdmin::Config do
   describe '.audit_with' do
     context 'given a key for a extension with auditing' do
       before do
-        RailsAdmin.add_extension(:example, ExampleModule,
-                                 auditing: true
-        )
+        RailsAdmin.add_extension(:example, ExampleModule, auditing: true)
       end
 
       it 'initializes the auditing adapter' do
@@ -144,18 +131,19 @@ describe RailsAdmin::Config do
 
     context 'given paper_trail as the extension for auditing', active_record: true do
       before do
+        class ControllerMock
+          def set_paper_trail_whodunnit; end
+        end
         module PaperTrail; end
         class Version; end
-        RailsAdmin.add_extension(:example, RailsAdmin::Extensions::PaperTrail,
-                                 auditing: true
-        )
+        RailsAdmin.add_extension(:example, RailsAdmin::Extensions::PaperTrail, auditing: true)
       end
 
       it 'initializes the auditing adapter' do
         RailsAdmin.config do |config|
           config.audit_with(:example)
         end
-        expect { RailsAdmin.config.audit_with.call }.not_to raise_error
+        expect { ControllerMock.new.instance_eval(&RailsAdmin.config.audit_with) }.not_to raise_error
       end
     end
   end
@@ -163,9 +151,7 @@ describe RailsAdmin::Config do
   describe '.configure_with' do
     context 'given a key for a extension with configuration' do
       before do
-        RailsAdmin.add_extension(:example, ExampleModule,
-                                 configuration: true
-        )
+        RailsAdmin.add_extension(:example, ExampleModule, configuration: true)
       end
 
       it 'initializes configuration adapter' do
@@ -241,8 +227,8 @@ describe RailsAdmin::Config do
       RailsAdmin.config do |config|
         config.included_models = [Comment]
       end
-      expect(RailsAdmin.config.visible_models(controller: double(authorized?: true)).collect(&:abstract_model).collect(&:model)).to eq([Comment])
-      expect(RailsAdmin.config.visible_models(controller: double(authorized?: false)).collect(&:abstract_model).collect(&:model)).to eq([])
+      expect(RailsAdmin.config.visible_models(controller: double(authorization_adapter: double(authorized?: true))).collect(&:abstract_model).collect(&:model)).to eq([Comment])
+      expect(RailsAdmin.config.visible_models(controller: double(authorization_adapter: double(authorized?: false))).collect(&:abstract_model).collect(&:model)).to eq([])
     end
 
     it 'does not contain embedded model', mongoid: true do
@@ -272,6 +258,60 @@ describe RailsAdmin::Config do
   describe '.models_pool' do
     it 'should not include classnames start with Concerns::' do
       expect(RailsAdmin::Config.models_pool.select { |m| m.match(/^Concerns::/) }).to be_empty
+    end
+  end
+
+  describe '.parent_controller' do
+    it 'uses default class' do
+      expect(RailsAdmin.config.parent_controller).to eq '::ActionController::Base'
+    end
+
+    it 'uses other class' do
+      RailsAdmin.config do |config|
+        config.parent_controller = 'TestController'
+      end
+      expect(RailsAdmin.config.parent_controller).to eq 'TestController'
+    end
+  end
+
+  describe '.model' do
+    let(:fields) { described_class.model(Team).fields }
+    before do
+      described_class.model Team do
+        field :players do
+          visible false
+        end
+      end
+    end
+    context 'when model expanded' do
+      before do
+        described_class.model(Team) do
+          field :fans
+        end
+      end
+      it 'execute all passed blocks' do
+        expect(fields.map(&:name)).to match_array %i(players fans)
+      end
+    end
+    context 'when expand redefine behavior' do
+      before do
+        described_class.model Team do
+          field :players
+        end
+      end
+      it 'execute all passed blocks' do
+        expect(fields.find { |f| f.name == :players }.visible).to be true
+      end
+    end
+    context 'when model expanded in config' do
+      let(:block) { proc { field :players } }
+      before do
+        allow(block).to receive(:source_location).and_return(['config/initializers/rails_admin.rb'])
+        described_class.model(Team, &block)
+      end
+      it 'executes first' do
+        expect(fields.find { |f| f.name == :players }.visible).to be false
+      end
     end
   end
 end

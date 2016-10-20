@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe RailsAdmin, type: :request do
-
   subject { page }
 
   before do
@@ -32,16 +31,15 @@ describe RailsAdmin, type: :request do
     # Note: the [href^="/asset... syntax matches the start of a value. The reason
     # we just do that is to avoid being confused by rails' asset_ids.
     it 'loads stylesheets in header' do
-      is_expected.to have_selector('head link[href^="/assets/rails_admin/rails_admin.css"]', visible: false)
+      is_expected.to have_selector('head link[href^="/assets/rails_admin/rails_admin"][href$=".css"]', visible: false)
     end
 
     it 'loads javascript files in body' do
-      is_expected.to have_selector('head script[src^="/assets/rails_admin/rails_admin.js"]', visible: false)
+      is_expected.to have_selector('head script[src^="/assets/rails_admin/rails_admin"][src$=".js"]', visible: false)
     end
   end
 
   describe 'hidden fields with default values' do
-
     before do
       RailsAdmin.config Player do
         include_all_fields
@@ -57,8 +55,8 @@ describe RailsAdmin, type: :request do
 
     it 'shows up with default value, hidden' do
       visit new_path(model_name: 'player')
-      is_expected.to have_selector("#player_name[type=hidden][value='username@example.com']")
-      is_expected.not_to have_selector("#player_name[type=hidden][value='toto@example.com']")
+      is_expected.to have_selector("#player_name[type=hidden][value='username@example.com']", visible: false)
+      is_expected.not_to have_selector("#player_name[type=hidden][value='toto@example.com']", visible: false)
     end
 
     it 'does not show label' do
@@ -71,9 +69,7 @@ describe RailsAdmin, type: :request do
   end
 
   describe '_current_user' do # https://github.com/sferik/rails_admin/issues/549
-
     it 'is accessible from the list view' do
-
       RailsAdmin.config Player do
         list do
           field :name do
@@ -125,19 +121,19 @@ describe RailsAdmin, type: :request do
   describe 'secondary navigation' do
     it 'has Gravatar image' do
       visit dashboard_path
-      is_expected.to have_selector('ul.nav.pull-right li img')
+      is_expected.to have_selector('ul.navbar-right img[src*="gravatar.com"]')
     end
 
     it "does not show Gravatar when user doesn't have email method" do
       allow_any_instance_of(User).to receive(:respond_to?).and_return(true)
       allow_any_instance_of(User).to receive(:respond_to?).with(:email).and_return(false)
+      allow_any_instance_of(User).to receive(:respond_to?).with(:devise_scope).and_return(false)
       visit dashboard_path
       is_expected.not_to have_selector('ul.nav.pull-right li img')
     end
 
     it 'does not cause error when email is nil' do
-      allow_any_instance_of(User).to receive(:respond_to?).and_return(true)
-      allow_any_instance_of(User).to receive(:respond_to?).with(:email).and_return(nil)
+      allow_any_instance_of(User).to receive(:email).and_return(nil)
       visit dashboard_path
       is_expected.to have_selector('body.rails_admin')
     end
@@ -145,6 +141,11 @@ describe RailsAdmin, type: :request do
     it 'shows a log out link' do
       visit dashboard_path
       is_expected.to have_content 'Log out'
+    end
+
+    it 'has label-danger class on log out link' do
+      visit dashboard_path
+      is_expected.to have_selector('.label-danger')
     end
   end
 end

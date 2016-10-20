@@ -1,7 +1,6 @@
 require 'spec_helper'
 
 describe RailsAdmin::Config::Fields::Base do
-
   describe '#required' do
     it 'reads the on: :create/:update validate option' do
       RailsAdmin.config Ball do
@@ -17,6 +16,22 @@ describe RailsAdmin::Config::Fields::Base do
         expect(RailsAdmin.config('Image').fields.detect { |f| f.name == :file }.with(object: Image.new)).to be_required
       end
     end
+
+    context 'when the validation is conditional' do
+      before do
+        class ConditionalValidationTest < Tableless
+          column :foo, :varchar
+          column :bar, :varchar
+          validates :foo, presence: true, if: :presisted?
+          validates :bar, presence: true, unless: :presisted?
+        end
+      end
+
+      it 'is false' do
+        expect(RailsAdmin.config('ConditionalValidationTest').fields.detect { |f| f.name == :foo }).not_to be_required
+        expect(RailsAdmin.config('ConditionalValidationTest').fields.detect { |f| f.name == :bar }).not_to be_required
+      end
+    end
   end
 
   describe '#name' do
@@ -29,7 +44,7 @@ describe RailsAdmin::Config::Fields::Base do
   end
 
   describe '#children_fields' do
-    POLYMORPHIC_CHILDREN = [:commentable_id, :commentable_type]
+    POLYMORPHIC_CHILDREN = [:commentable_id, :commentable_type].freeze
 
     it 'is empty by default' do
       expect(RailsAdmin.config(Team).fields.detect { |f| f.name == :name }.children_fields).to eq([])
@@ -74,6 +89,14 @@ describe RailsAdmin::Config::Fields::Base do
       it 'is the parent field itself' do
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.children_fields).to eq([:carrierwave_asset])
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.hidden?).to be_falsey
+      end
+    end
+
+    if defined?(Refile)
+      context 'of a Refile installation' do
+        it 'is a _id field' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.children_fields).to eq([:refile_asset_id, :refile_asset_filename, :refile_asset_size, :refile_asset_content_type])
+        end
       end
     end
   end
@@ -155,10 +178,29 @@ describe RailsAdmin::Config::Fields::Base do
     end
 
     it 'defaults to false if associated collection count >= 100' do
-      @players = 100.times.collect do
+      @players = Array.new(100) do
         FactoryGirl.create :player
       end
       expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_falsey
+    end
+
+    context 'with custom configuration' do
+      before do
+        RailsAdmin.config.default_associated_collection_limit = 5
+      end
+      it 'defaults to true if associated collection count less than than limit' do
+        @players = Array.new(4) do
+          FactoryGirl.create :player
+        end
+        expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_truthy
+      end
+
+      it 'defaults to false if associated collection count >= that limit' do
+        @players = Array.new(5) do
+          FactoryGirl.create :player
+        end
+        expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_falsey
+      end
     end
   end
 
@@ -197,7 +239,6 @@ describe RailsAdmin::Config::Fields::Base do
     end
 
     describe 'for basic type fields' do
-
       it 'uses base table and find correct column type' do
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :text_field }.searchable_columns).to eq([{column: 'field_tests.text_field', type: :text}])
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :integer_field }.searchable_columns).to eq([{column: 'field_tests.integer_field', type: :integer}])
@@ -243,6 +284,12 @@ describe RailsAdmin::Config::Fields::Base do
       it 'of carrierwave should find the underlying column on the base table' do
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.searchable_columns.collect { |c| c[:column] }).to eq(['field_tests.carrierwave_asset'])
       end
+
+      if defined?(Refile)
+        it 'of refile should find the underlying column on the base table' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.searchable_columns.collect { |c| c[:column] }).to eq(['field_tests.refile_asset_id'])
+        end
+      end
     end
   end
 
@@ -273,6 +320,13 @@ describe RailsAdmin::Config::Fields::Base do
       it 'of carrierwave should target the first children field' do
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.searchable).to eq(:carrierwave_asset)
         expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_asset }.sortable).to eq(:carrierwave_asset)
+      end
+
+      if defined?(Refile)
+        it 'of refile should target the first children field' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.searchable).to eq(:refile_asset_id)
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.sortable).to eq(:refile_asset_id)
+        end
       end
     end
   end
@@ -361,7 +415,7 @@ describe RailsAdmin::Config::Fields::Base do
 
   describe '#associated_collection' do
     it 'returns [] when type is blank?' do
-      expect(RailsAdmin.config(Comment).fields.detect { |f|f.name == :commentable }.associated_collection('')).to be_empty
+      expect(RailsAdmin.config(Comment).fields.detect { |f| f.name == :commentable }.associated_collection('')).to be_empty
     end
   end
 
@@ -372,12 +426,12 @@ describe RailsAdmin::Config::Fields::Base do
         column :_id, :integer
         column :_type, :varchar
         column :name, :varchar
-        column :created_at, :datetime
-        column :updated_at, :datetime
-        column :deleted_at, :datetime
-        column :created_on, :datetime
-        column :updated_on, :datetime
-        column :deleted_on, :datetime
+        column :created_at, :timestamp
+        column :updated_at, :timestamp
+        column :deleted_at, :timestamp
+        column :created_on, :timestamp
+        column :updated_on, :timestamp
+        column :deleted_on, :timestamp
       end
       expect(RailsAdmin.config(FieldVisibilityTest).base.fields.select(&:visible?).collect(&:name)).to match_array [:_id, :created_at, :created_on, :deleted_at, :deleted_on, :id, :name, :updated_at, :updated_on]
       expect(RailsAdmin.config(FieldVisibilityTest).list.fields.select(&:visible?).collect(&:name)).to match_array [:_id, :created_at, :created_on, :deleted_at, :deleted_on, :id, :name, :updated_at, :updated_on]

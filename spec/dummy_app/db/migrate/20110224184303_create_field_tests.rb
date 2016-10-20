@@ -1,4 +1,4 @@
-class CreateFieldTests < ActiveRecord::Migration
+class CreateFieldTests < MigrationBase
   def self.up
     create_table :field_tests do |t|
       t.string :string_field
@@ -12,7 +12,7 @@ class CreateFieldTests < ActiveRecord::Migration
       t.date :date_field
       t.boolean :boolean_field
 
-      t.timestamps
+      t.timestamps null: false
     end
   end
 

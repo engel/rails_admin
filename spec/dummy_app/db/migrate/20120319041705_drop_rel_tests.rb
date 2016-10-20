@@ -1,4 +1,4 @@
-class DropRelTests < ActiveRecord::Migration
+class DropRelTests < MigrationBase
   def self.up
     drop_table :rel_tests
   end
@@ -9,7 +9,7 @@ class DropRelTests < ActiveRecord::Migration
       t.integer :division_id, null: false
       t.integer :player_id
 
-      t.timestamps
+      t.timestamps null: false
     end
   end
 end
