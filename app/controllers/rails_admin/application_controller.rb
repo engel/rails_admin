@@ -14,6 +14,7 @@ module RailsAdmin
     before_action :_authenticate!
     before_action :_authorize!
     before_action :_audit!
+    before_filter :_locale!
 
     helper_method :_current_user, :_get_plugin_name
 
@@ -42,6 +43,10 @@ module RailsAdmin
 
     def _get_plugin_name
       @plugin_name_array ||= [RailsAdmin.config.main_app_name.is_a?(Proc) ? instance_eval(&RailsAdmin.config.main_app_name) : RailsAdmin.config.main_app_name].flatten
+    end
+
+    def _locale!
+      instance_eval(&RailsAdmin::Config.locale)
     end
 
     def _authenticate!

@@ -108,7 +108,7 @@ module RailsAdmin
 
       def locale(&blk)
         @locale = blk if blk
-        @locale || :en
+        @locale || {}
       end
       # Setup auditing/history/versioning provider that observe objects lifecycle
       def audit_with(*args, &block)
