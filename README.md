@@ -2,19 +2,28 @@
 
 [![Gem Version](https://img.shields.io/gem/v/rails_admin.svg)][gem]
 [![Build Status](https://img.shields.io/travis/sferik/rails_admin.svg)][travis]
-[![Dependency Status](https://img.shields.io/gemnasium/sferik/rails_admin.svg)][gemnasium]
-[![Code Climate](https://img.shields.io/codeclimate/github/sferik/rails_admin.svg)][codeclimate]
 [![Coverage Status](https://img.shields.io/coveralls/sferik/rails_admin.svg)][coveralls]
 [![Inline docs](http://inch-ci.org/github/sferik/rails_admin.svg)][inch]
+[![Code Climate](https://codeclimate.com/github/sferik/rails_admin.svg)][codeclimate]
+[![SemVer](https://api.dependabot.com/badges/compatibility_score?dependency-name=rails_admin&package-manager=bundler&version-scheme=semver)][semver]
 
 [gem]: https://rubygems.org/gems/rails_admin
 [travis]: https://travis-ci.org/sferik/rails_admin
-[gemnasium]: https://gemnasium.com/sferik/rails_admin
-[codeclimate]: https://codeclimate.com/github/sferik/rails_admin
 [coveralls]: https://coveralls.io/r/sferik/rails_admin
 [inch]: http://inch-ci.org/github/sferik/rails_admin
+[codeclimate]: https://codeclimate.com/github/sferik/rails_admin
+[semver]: https://dependabot.com/compatibility-score.html?dependency-name=rails_admin&package-manager=bundler&version-scheme=semver
 
 RailsAdmin is a Rails engine that provides an easy-to-use interface for managing your data.
+
+## Announcements
+
+### [Action required] Security issue
+
+**RailsAdmin prior to 1.3.0 have been reported to have XSS vulnerability.** We strongly recommend that you upgrade RailsAdmin to 1.3.0 or later as soon as possible, if you are on those versions. See [#2985](https://github.com/sferik/rails_admin/issues/2985) for the detail.
+
+Also, 1.0.0 and 1.1.0 is known to have [CSRF vulnerability](https://github.com/sferik/rails_admin/commit/b13e879eb93b661204e9fb5e55f7afa4f397537a), too.
+
 
 ## Features
 * CRUD any data with ease
@@ -33,7 +42,7 @@ RailsAdmin is a Rails engine that provides an easy-to-use interface for managing
 
 ## Installation
 
-1. On your gemfile: `gem 'rails_admin', '~> 1.0'`
+1. On your gemfile: `gem 'rails_admin', '~> 1.3'`
 2. Run `bundle install`
 3. Run `rails g rails_admin:install`
 4. Provide a namespace for the routes when asked
@@ -41,7 +50,7 @@ RailsAdmin is a Rails engine that provides an easy-to-use interface for managing
 
 ## Configuration
 ### Global
-In `config/initializers/rails_admin`:
+In `config/initializers/rails_admin.rb`:
 
 [Details](https://github.com/sferik/rails_admin/wiki/Base-configuration)
 
@@ -91,6 +100,8 @@ This library aims to support and is [tested against][travis] the following Ruby 
 * Ruby 2.1
 * Ruby 2.2
 * Ruby 2.3
+* Ruby 2.4
+* Ruby 2.5
 * [Rubinius][]
 * [JRuby][]
 

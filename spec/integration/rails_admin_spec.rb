@@ -94,8 +94,8 @@ describe RailsAdmin, type: :request do
 
   describe 'polymorphic associations' do
     before :each do
-      @team = FactoryGirl.create :team
-      @comment = FactoryGirl.create :comment, commentable: @team
+      @team = FactoryBot.create :team
+      @comment = FactoryBot.create :comment, commentable: @team
     end
 
     it 'works like belongs to associations in the list view' do
@@ -146,6 +146,19 @@ describe RailsAdmin, type: :request do
     it 'has label-danger class on log out link' do
       visit dashboard_path
       is_expected.to have_selector('.label-danger')
+    end
+  end
+
+  describe 'CSRF protection' do
+    before do
+      allow_any_instance_of(ActionController::Base).to receive(:protect_against_forgery?).and_return(true)
+    end
+
+    it 'is enforced' do
+      visit new_path(model_name: 'league')
+      fill_in 'league[name]', with: 'National league'
+      find('input[name="authenticity_token"]', visible: false).set("invalid token")
+      expect { click_button 'Save' }.to raise_error ActionController::InvalidAuthenticityToken
     end
   end
 end

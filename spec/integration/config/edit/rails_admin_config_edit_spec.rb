@@ -705,7 +705,7 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
 
   describe 'nested form' do
     it 'works', js: true do
-      @record = FactoryGirl.create :field_test
+      @record = FactoryBot.create :field_test
       NestedFieldTest.create! title: 'title 1', field_test: @record
       NestedFieldTest.create! title: 'title 2', field_test: @record
       visit edit_path(model_name: 'field_test', id: @record.id)
@@ -716,7 +716,8 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
       fill_in 'field_test_nested_field_tests_attributes_0_title', with: 'nested field test title 1 edited', visible: false
       find('#field_test_nested_field_tests_attributes_1__destroy', visible: false).set('true')
 
-      click_button 'Save'
+      # trigger click via JS, workaround for instability in CI
+      execute_script %($('button[name="_save"]').trigger('click');)
       is_expected.to have_content('Field test successfully updated')
 
       @record.reload
@@ -725,8 +726,17 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
       expect(@record.nested_field_tests[0].title).to eq('nested field test title 1 edited')
     end
 
+    it 'works with nested has_many', js: true do
+      @record = FactoryBot.create :field_test
+      visit edit_path(model_name: 'field_test', id: @record.id)
+
+      find('#field_test_nested_field_tests_attributes_field .add_nested_fields').click
+
+      expect(page).to have_selector('.fields.tab-pane.active', visible: true)
+    end
+
     it 'is optional for has_one' do
-      @record = FactoryGirl.create :field_test
+      @record = FactoryBot.create :field_test
       visit edit_path(model_name: 'field_test', id: @record.id)
       click_button 'Save'
       @record.reload
@@ -808,7 +818,7 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
 
   describe 'embedded model', mongoid: true do
     it 'works' do
-      @record = FactoryGirl.create :field_test
+      @record = FactoryBot.create :field_test
       2.times.each { |i| @record.embeds.create name: "embed #{i}" }
       visit edit_path(model_name: 'field_test', id: @record.id)
       fill_in 'field_test_embeds_attributes_0_name', with: 'embed 1 edited'
@@ -830,7 +840,7 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
             end
           end
         end
-        @field_test = FactoryGirl.create :field_test
+        @field_test = FactoryBot.create :field_test
       end
 
       it 'don\'t allow to remove element', js: true do
@@ -847,7 +857,7 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
             field :players
           end
         end
-        @team = FactoryGirl.create :team
+        @team = FactoryBot.create :team
       end
 
       it 'allow to remove element', js: true do
@@ -888,6 +898,18 @@ describe 'RailsAdmin Config DSL Edit Section', type: :request do
       field = RailsAdmin.config('Team').edit.fields.detect { |f| f.name == :founded }
       expect(field.properties.nullable?).to be_truthy
       expect(field.required?).to be_falsey
+    end
+  end
+
+  describe 'SimpleMDE Support' do
+    it 'adds Javascript to enable SimpleMDE' do
+      RailsAdmin.config Draft do
+        edit do
+          field :notes, :simple_mde
+        end
+      end
+      visit new_path(model_name: 'draft')
+      is_expected.to have_selector('textarea#draft_notes[data-richtext="simplemde"]')
     end
   end
 

@@ -2,10 +2,113 @@
 
 ## [Unreleased](https://github.com/sferik/rails_admin/tree/HEAD)
 
-[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.0.0...HEAD)
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.4.2...HEAD)
+
+
+## [1.4.2](https://github.com/sferik/rails_admin/tree/v1.4.2) - 2018-09-23
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.4.1...v1.4.2)
+
+### Fixed
+- Fix `can't modify frozen Array` error on startup([#3060](https://github.com/sferik/rails_admin/issues/3060))
+- Fix deprecation warning with PaperTrail.whodunnit([#3059](https://github.com/sferik/rails_admin/pull/3059))
+
+
+## [1.4.1](https://github.com/sferik/rails_admin/tree/v1.4.1) - 2018-08-19
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.4.0...v1.4.1)
+
+### Fixed
+- Export crashes for models with JSON field([#3056](https://github.com/sferik/rails_admin/pull/3056))
+- Middlewares being mangled by engine initializer, causing app's session store configuration to be overwritten([#3048](https://github.com/sferik/rails_admin/issues/3048), [59478af9](https://github.com/sferik/rails_admin/commit/59478af9a05c76bdfe35e94e63c60ba89c27a483))
+
+
+## [1.4.0](https://github.com/sferik/rails_admin/tree/v1.4.0) - 2018-07-22
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.3.0...v1.4.0)
+
+### Added
+- Support for ActiveStorage([#2990](https://github.com/sferik/rails_admin/issues/2990), [#3037](https://github.com/sferik/rails_admin/pull/3037))
+- Support for multiple file upload for ActiveStorage and CarrierWave ([5bb2d375](https://github.com/sferik/rails_admin/commit/5bb2d375a236268e51c7e8682c2d110d9e52970f))
+- Support for Mongoid 7.0([9ef623f6](https://github.com/sferik/rails_admin/commit/9ef623f6cba73adbf86833d9eb07f1be3924a133), [#3013](https://github.com/sferik/rails_admin/issues/3013))
+- Support for CanCanCan 2.0([a32d49e4](https://github.com/sferik/rails_admin/commit/a32d49e4b96944905443588a1216b3362ee64c1a), [#2901](https://github.com/sferik/rails_admin/issues/2901))
+- Support for Pundit 2.0([bc60c978](https://github.com/sferik/rails_admin/commit/bc60c978adfebe09cdad2c199878d8ff966374f1))
+- Support for jquery-ui-rails 6.0([#2951](https://github.com/sferik/rails_admin/issues/2951), [#3003](https://github.com/sferik/rails_admin/issues/3003))
+
+### Fixed
+- Make code reloading work([#3041](https://github.com/sferik/rails_admin/pull/3041))
+- Improved support for Rails API mode, requiring needed middlewares in engine's initializer([#2919](https://github.com/sferik/rails_admin/issues/2919), [#3006](https://github.com/sferik/rails_admin/pull/3006))
+- Make the link text to uploaded file shorter, instead of showing full url([#2983](https://github.com/sferik/rails_admin/pull/2983))
+- Fix duplication of filters on browser back([#2998](https://github.com/sferik/rails_admin/pull/2998))
+- Fix "can't modify frozen array" exception on code reload([#2999](https://github.com/sferik/rails_admin/pull/2999))
+- Fix incorrectly comparing numeric columns with empty string when handling blank operator([#3007](https://github.com/sferik/rails_admin/pull/3007))
+
+
+## [1.3.0](https://github.com/sferik/rails_admin/tree/v1.3.0) - 2018-02-18
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.2.0...v1.3.0)
+
+### Added
+- Configurability for forgery protection setting([#2989](https://github.com/sferik/rails_admin/pull/2989))
+- Configurability for the number of audit records displayed into dashboard([#2982](https://github.com/sferik/rails_admin/pull/2982))
+- Add limited pagination mode, which doesn't require count query([#2968](https://github.com/sferik/rails_admin/pull/2968))
+- Prettier output of JSON field value([#2937](https://github.com/sferik/rails_admin/pull/2937), [#2973](https://github.com/sferik/rails_admin/pull/2973), [#2980](https://github.com/sferik/rails_admin/pull/2980))
+- Add markdown field support through SimpleMDE([#2949](https://github.com/sferik/rails_admin/pull/2949))
+- Checkboxes for bulk actions in index page can be turned off now([#2917](https://github.com/sferik/rails_admin/pull/2917))
+
+### Fixed
+- Parse JS translations as JSON([#2925](https://github.com/sferik/rails_admin/pull/2925))
+- Re-selecting an item after unselecting has no effect in filtering-multiselect([#2912](https://github.com/sferik/rails_admin/issues/2912))
+- Stop memoization of datetime parser to handle locale changes([#2824](https://github.com/sferik/rails_admin/pull/2824))
+- Filters for ActiveRecord Enum field behaved incorrectly for enums whose labels are different from values([#2971](https://github.com/sferik/rails_admin/pull/2971))
+- Client-side required validation was not enforced in filtering-select widget([#2905](https://github.com/sferik/rails_admin/pull/2905))
+- Filter refresh button was broken([#2890](https://github.com/sferik/rails_admin/pull/2890))
+
+### Security
+- Fix XSS vulnerability in filter and multi-select widget([#2985](https://github.com/sferik/rails_admin/issues/2985), [44f09ed7](https://github.com/sferik/rails_admin/commit/44f09ed72b5e0e917a5d61bd89c48d97c494b41c))
+
+
+## [1.2.0](https://github.com/sferik/rails_admin/tree/v1.2.0) - 2017-05-31
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.1.1...v1.2.0)
+
+### Added
+- Add ILIKE support for PostgreSQL/PostGIS adapter, multibyte downcase for other adapters([#2766](https://github.com/sferik/rails_admin/pull/2766))
+- Support for UUID query([#2766](https://github.com/sferik/rails_admin/pull/2766))
+- Support for Haml 5([#2840](https://github.com/sferik/rails_admin/pull/2840), [#2870](https://github.com/sferik/rails_admin/pull/2870), [#2877](https://github.com/sferik/rails_admin/pull/2877))
+- Add instance option to append a CSS class for rows([#2860](https://github.com/sferik/rails_admin/pull/2860))
+
+### Fixed
+- Remove usage of alias_method_chain, deprecated in Rails 5.0([#2864](https://github.com/sferik/rails_admin/pull/2864))
+- Load models from eager_load, not autoload_paths([#2771](https://github.com/sferik/rails_admin/pull/2771))
+- jQuery 3.0 doesn't have size(), use length instead([#2841](https://github.com/sferik/rails_admin/pull/2841))
+- Prepopulation of the new form didn't work with namespaced models([#2701](https://github.com/sferik/rails_admin/pull/2701))
+
+
+## [1.1.1](https://github.com/sferik/rails_admin/tree/v1.1.1) - 2016-12-25
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.1.0...v1.1.1)
+
+### Fixed
+- CSV export broke with empty tables([#2796](https://github.com/sferik/rails_admin/issues/2796), [#2797](https://github.com/sferik/rails_admin/pull/2797))
+- ActiveRecord adapter's #encoding did not work with Oracle enhanced adapter([#2789](https://github.com/sferik/rails_admin/pull/2789))
+- ActiveRecord 5 belongs_to presence validators were unintentionally disabled due to initialization mishandling([#2785](https://github.com/sferik/rails_admin/issues/2785), [#2786](https://github.com/sferik/rails_admin/issues/2786))
+- Destroy failure caused subsequent index action to return 404, instead of 200([#2775](https://github.com/sferik/rails_admin/issues/2775), [#2776](https://github.com/sferik/rails_admin/pull/2776))
+- CSVConverter#to_csv now accepts string-keyed hashes([#2740](https://github.com/sferik/rails_admin/issues/2740), [#2741](https://github.com/sferik/rails_admin/pull/2741))
+
+### Security
+- Fix CSRF vulnerability([b13e879e](https://github.com/sferik/rails_admin/commit/b13e879eb93b661204e9fb5e55f7afa4f397537a))
+
+
+## [1.1.0](https://github.com/sferik/rails_admin/tree/v1.1.0) - 2016-10-30
+
+[Full Changelog](https://github.com/sferik/rails_admin/compare/v1.0.0...v1.1.0)
 
 ### Added
 - DSL for association eager-loading([#1325](https://github.com/sferik/rails_admin/issues/1325), [#1342](https://github.com/sferik/rails_admin/issues/1342))
+
+### Fixed
+- Fix nested has_many form failing to add items([#2737](https://github.com/sferik/rails_admin/pull/2737))
 
 
 ## [1.0.0](https://github.com/sferik/rails_admin/tree/v1.0.0) - 2016-09-19

@@ -3,7 +3,7 @@ require 'timecop'
 
 describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
   before do
-    @like = if ::ActiveRecord::Base.configurations[Rails.env]['adapter'] == 'postgresql'
+    @like = if ['postgresql', 'postgis'].include? ::ActiveRecord::Base.configurations[Rails.env]['adapter']
               '(field ILIKE ?)'
             else
               '(LOWER(field) LIKE ?)'
@@ -36,7 +36,11 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
     let(:abstract_model) { RailsAdmin::AbstractModel.new('Player') }
 
     before do
-      @players = FactoryGirl.create_list(:player, 3)
+      @players = FactoryBot.create_list(:player, 3) + [
+        # Multibyte players
+        FactoryBot.create(:player, name: 'Антоха'),
+        FactoryBot.create(:player, name: 'Петруха'),
+      ]
     end
 
     it '#new returns instance of AbstractObject' do
@@ -77,7 +81,7 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
 
     it '#destroy destroys multiple items' do
       abstract_model.destroy(@players[0..1])
-      expect(Player.all).to eq(@players[2..2])
+      expect(Player.all).to eq(@players[2..-1])
     end
 
     it '#where returns filtered results' do
@@ -102,8 +106,8 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
       end
 
       it 'supports pagination' do
-        expect(abstract_model.all(sort: 'id', page: 2, per: 1)).to eq(@players[1..1])
-        expect(abstract_model.all(sort: 'id', page: 1, per: 2)).to eq(@players[1..2].reverse)
+        expect(abstract_model.all(sort: 'id', page: 2, per: 1)).to eq(@players[-2, 1])
+        expect(abstract_model.all(sort: 'id', page: 1, per: 2)).to eq(@players[-2, 2].reverse)
       end
 
       it 'supports ordering' do
@@ -113,6 +117,13 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
       it 'supports querying' do
         results = abstract_model.all(query: @players[1].name)
         expect(results).to eq(@players[1..1])
+      end
+
+      it 'supports multibyte querying' do
+        unless ::ActiveRecord::Base.configurations[Rails.env]['adapter'] == 'sqlite3'
+          results = abstract_model.all(query: @players[4].name)
+          expect(results).to eq(@players[4, 1])
+        end
       end
 
       it 'supports filtering' do
@@ -126,7 +137,7 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
 
     before do
       @teams = [{}, {name: 'somewhere foos'}, {manager: 'foo junior'}].
-               collect { |h| FactoryGirl.create :team, h }
+               collect { |h| FactoryBot.create :team, h }
     end
 
     it 'makes correct query' do
@@ -152,9 +163,9 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
     let(:abstract_model) { RailsAdmin::AbstractModel.new('Team') }
 
     before do
-      @division = FactoryGirl.create :division, name: 'bar division'
+      @division = FactoryBot.create :division, name: 'bar division'
       @teams = [{}, {division: @division}, {name: 'somewhere foos', division: @division}, {name: 'nowhere foos'}].
-               collect { |h| FactoryGirl.create :team, h }
+               collect { |h| FactoryBot.create :team, h }
     end
 
     context 'without configuration' do
@@ -201,8 +212,10 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
       end
 
       it 'performs case-insensitive searches' do
-        expect(build_statement(:string, 'foo', 'default')).to eq([@like, '%foo%'])
-        expect(build_statement(:string, 'FOO', 'default')).to eq([@like, '%foo%'])
+        unless ['postgresql', 'postgis'].include?(::ActiveRecord::Base.configurations[Rails.env]['adapter'])
+          expect(build_statement(:string, 'foo', 'default')).to eq([@like, '%foo%'])
+          expect(build_statement(:string, 'FOO', 'default')).to eq([@like, '%foo%'])
+        end
       end
 
       it "supports '_blank' operator" do
@@ -357,6 +370,66 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
         expect(build_statement(:float, ['', '', 'word2'], 'between')).to be_nil
         expect(build_statement(:float, ['', 'word3', 'word4'], 'between')).to be_nil
       end
+
+      it "supports '_blank' operator" do
+        [['_blank', ''], ['', '_blank']].each do |value, operator|
+          aggregate_failures do
+            expect(build_statement(:integer, value, operator)).to eq(["(field IS NULL)"])
+            expect(build_statement(:decimal, value, operator)).to eq(["(field IS NULL)"])
+            expect(build_statement(:float, value, operator)).to eq(["(field IS NULL)"])
+          end
+        end
+      end
+
+      it "supports '_present' operator" do
+        [['_present', ''], ['', '_present']].each do |value, operator|
+          aggregate_failures do
+            expect(build_statement(:integer, value, operator)).to eq(["(field IS NOT NULL)"])
+            expect(build_statement(:decimal, value, operator)).to eq(["(field IS NOT NULL)"])
+            expect(build_statement(:float, value, operator)).to eq(["(field IS NOT NULL)"])
+          end
+        end
+      end
+
+      it "supports '_null' operator" do
+        [['_null', ''], ['', '_null']].each do |value, operator|
+          aggregate_failures do
+            expect(build_statement(:integer, value, operator)).to eq(["(field IS NULL)"])
+            expect(build_statement(:decimal, value, operator)).to eq(["(field IS NULL)"])
+            expect(build_statement(:float, value, operator)).to eq(["(field IS NULL)"])
+          end
+        end
+      end
+
+      it "supports '_not_null' operator" do
+        [['_not_null', ''], ['', '_not_null']].each do |value, operator|
+          aggregate_failures do
+            expect(build_statement(:integer, value, operator)).to eq(["(field IS NOT NULL)"])
+            expect(build_statement(:decimal, value, operator)).to eq(["(field IS NOT NULL)"])
+            expect(build_statement(:float, value, operator)).to eq(["(field IS NOT NULL)"])
+          end
+        end
+      end
+
+      it "supports '_empty' operator" do
+        [['_empty', ''], ['', '_empty']].each do |value, operator|
+          aggregate_failures do
+            expect(build_statement(:integer, value, operator)).to eq(["(field IS NULL)"])
+            expect(build_statement(:decimal, value, operator)).to eq(["(field IS NULL)"])
+            expect(build_statement(:float, value, operator)).to eq(["(field IS NULL)"])
+          end
+        end
+      end
+
+      it "supports '_not_empty' operator" do
+        [['_not_empty', ''], ['', '_not_empty']].each do |value, operator|
+          aggregate_failures do
+            expect(build_statement(:integer, value, operator)).to eq(["(field IS NOT NULL)"])
+            expect(build_statement(:decimal, value, operator)).to eq(["(field IS NOT NULL)"])
+            expect(build_statement(:float, value, operator)).to eq(["(field IS NOT NULL)"])
+          end
+        end
+      end
     end
 
     describe 'date type queries' do
@@ -379,6 +452,23 @@ describe 'RailsAdmin::Adapters::ActiveRecord', active_record: true do
 
     it 'supports enum type query' do
       expect(build_statement(:enum, '1', nil)).to eq(['(field IN (?))', ['1']])
+    end
+
+    describe 'with ActiveRecord native enum' do
+      let(:scope) { FieldTest.all }
+
+      it 'supports integer enum type query' do
+        expect(predicates_for(abstract_model.send(:filter_scope, scope, 'integer_enum_field' => {'1' => {v: 2, o: 'default'}}))).to eq(predicates_for(scope.where(['(field_tests.integer_enum_field IN (?))', 2])))
+      end
+
+      it 'supports string enum type query' do
+        expect(predicates_for(abstract_model.send(:filter_scope, scope, 'string_enum_field' => {'1' => {v: 'm', o: 'default'}}))).to eq(predicates_for(scope.where(['(field_tests.string_enum_field IN (?))', 'm'])))
+      end
+    end if ::Rails.version >= '4.1'
+
+    it 'supports uuid type query' do
+      uuid = SecureRandom.uuid
+      expect(build_statement(:uuid, uuid, nil)).to eq(['(field = ?)', uuid])
     end
   end
 

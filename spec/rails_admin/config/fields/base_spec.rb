@@ -8,7 +8,7 @@ describe RailsAdmin::Config::Fields::Base do
       end
 
       expect(RailsAdmin.config('Ball').fields.first.with(object: Ball.new)).to be_required
-      expect(RailsAdmin.config('Ball').fields.first.with(object: FactoryGirl.create(:ball))).not_to be_required
+      expect(RailsAdmin.config('Ball').fields.first.with(object: FactoryBot.create(:ball))).not_to be_required
     end
 
     context 'on a Paperclip installation' do
@@ -92,10 +92,43 @@ describe RailsAdmin::Config::Fields::Base do
       end
     end
 
+    context 'of a Carrierwave installation with multiple file support' do
+      it 'is the parent field itself' do
+        expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_assets }.children_fields).to eq([:carrierwave_assets])
+        expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :carrierwave_assets }.hidden?).to be_falsey
+      end
+    end
+
     if defined?(Refile)
       context 'of a Refile installation' do
         it 'is a _id field' do
           expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :refile_asset }.children_fields).to eq([:refile_asset_id, :refile_asset_filename, :refile_asset_size, :refile_asset_content_type])
+        end
+      end
+    end
+
+    if defined?(ActiveStorage)
+      context 'of a ActiveStorage installation' do
+        it 'is _attachment and _blob fields' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :active_storage_asset }.children_fields).to match_array [:active_storage_asset_attachment, :active_storage_asset_blob]
+        end
+
+        it 'is hidden, not filterable' do
+          fields = RailsAdmin.config(FieldTest).fields.select { |f| [:active_storage_asset_attachment, :active_storage_asset_blob].include?(f.name) }
+          expect(fields).to all(be_hidden)
+          expect(fields).not_to include(be_filterable)
+        end
+      end
+
+      context 'of a ActiveStorage installation with multiple file support' do
+        it 'is _attachment and _blob fields' do
+          expect(RailsAdmin.config(FieldTest).fields.detect { |f| f.name == :active_storage_assets }.children_fields).to match_array [:active_storage_assets_attachments, :active_storage_assets_blobs]
+        end
+
+        it 'is hidden, not filterable' do
+          fields = RailsAdmin.config(FieldTest).fields.select { |f| [:active_storage_assets_attachments, :active_storage_assets_blobs].include?(f.name) }
+          expect(fields).to all(be_hidden)
+          expect(fields).not_to include(be_filterable)
         end
       end
     end
@@ -114,7 +147,7 @@ describe RailsAdmin::Config::Fields::Base do
       expect(RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }.with(object: @team).form_default_value).to eq('default value')
       @team.name = 'set value'
       expect(RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }.with(object: @team).form_default_value).to be_nil
-      @team = FactoryGirl.create :team
+      @team = FactoryBot.create :team
       @team.name = nil
       expect(RailsAdmin.config('Team').list.fields.detect { |f| f.name == :name }.with(object: @team).form_default_value).to be_nil
     end
@@ -179,7 +212,7 @@ describe RailsAdmin::Config::Fields::Base do
 
     it 'defaults to false if associated collection count >= 100' do
       @players = Array.new(100) do
-        FactoryGirl.create :player
+        FactoryBot.create :player
       end
       expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_falsey
     end
@@ -190,14 +223,14 @@ describe RailsAdmin::Config::Fields::Base do
       end
       it 'defaults to true if associated collection count less than than limit' do
         @players = Array.new(4) do
-          FactoryGirl.create :player
+          FactoryBot.create :player
         end
         expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_truthy
       end
 
       it 'defaults to false if associated collection count >= that limit' do
         @players = Array.new(5) do
-          FactoryGirl.create :player
+          FactoryBot.create :player
         end
         expect(RailsAdmin.config(Team).edit.fields.detect { |f| f.name == :players }.associated_collection_cache_all).to be_falsey
       end
@@ -299,7 +332,7 @@ describe RailsAdmin::Config::Fields::Base do
         field :virtual_column
         field :name
       end
-      @league = FactoryGirl.create :league
+      @league = FactoryBot.create :league
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :virtual_column }.sortable).to be_falsey
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :virtual_column }.searchable).to be_falsey
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :name }.sortable).to be_truthy
@@ -337,7 +370,7 @@ describe RailsAdmin::Config::Fields::Base do
         field :virtual_column
         field :name
       end
-      @league = FactoryGirl.create :league
+      @league = FactoryBot.create :league
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :virtual_column }.virtual?).to be_truthy
       expect(RailsAdmin.config('League').export.fields.detect { |f| f.name == :name }.virtual?).to be_falsey
     end

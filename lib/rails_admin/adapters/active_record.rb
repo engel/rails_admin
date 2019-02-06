@@ -77,6 +77,8 @@ module RailsAdmin
           ::ActiveRecord::Base.connection.select_one("SELECT ''::text AS str;").values.first.encoding
         when 'mysql2'
           ::ActiveRecord::Base.connection.instance_variable_get(:@connection).encoding
+        when 'oracle_enhanced'
+          ::ActiveRecord::Base.connection.select_one("SELECT dummy FROM DUAL").values.first.encoding
         else
           ::ActiveRecord::Base.connection.select_one("SELECT '' AS str;").values.first.encoding
         end
@@ -104,12 +106,6 @@ module RailsAdmin
 
         def add(field, value, operator)
           field.searchable_columns.flatten.each do |column_infos|
-            value =
-              if value.is_a?(Array)
-                value.map { |v| field.parse_value(v) }
-              else
-                field.parse_value(value)
-              end
             statement, value1, value2 = StatementBuilder.new(column_infos[:column], column_infos[:type], value, operator).to_statement
             @statements << statement if statement.present?
             @values << value1 unless value1.nil?
@@ -129,7 +125,8 @@ module RailsAdmin
       def query_scope(scope, query, fields = config.list.fields.select(&:queryable?))
         wb = WhereBuilder.new(scope)
         fields.each do |field|
-          wb.add(field, field.parse_value(query), field.search_operator)
+          value = parse_field_value(field, query)
+          wb.add(field, value, field.search_operator)
         end
         # OR all query statements
         wb.build
@@ -163,6 +160,8 @@ module RailsAdmin
           case @type
           when :boolean
             boolean_unary_operators
+          when :integer, :decimal, :float
+            numeric_unary_operators
           else
             generic_unary_operators
           end
@@ -189,6 +188,7 @@ module RailsAdmin
             '_not_empty' => ["(#{@column} IS NOT NULL)"],
           )
         end
+        alias_method :numeric_unary_operators, :boolean_unary_operators
 
         def range_filter(min, max)
           if min && max
@@ -207,6 +207,7 @@ module RailsAdmin
           when :string, :text             then build_statement_for_string_or_text
           when :enum                      then build_statement_for_enum
           when :belongs_to_association    then build_statement_for_belongs_to_association
+          when :uuid                      then build_statement_for_uuid
           end
         end
 
@@ -226,22 +227,27 @@ module RailsAdmin
 
         def build_statement_for_string_or_text
           return if @value.blank?
+
+          unless ['postgresql', 'postgis'].include? ar_adapter
+            @value = @value.mb_chars.downcase
+          end
+
           @value = begin
             case @operator
             when 'default', 'like'
-              "%#{@value.downcase}%"
+              "%#{@value}%"
             when 'starts_with'
-              "#{@value.downcase}%"
+              "#{@value}%"
             when 'ends_with'
-              "%#{@value.downcase}"
+              "%#{@value}"
             when 'is', '='
-              @value.downcase
+              @value
             else
               return
             end
           end
 
-          if ar_adapter == 'postgresql'
+          if ['postgresql', 'postgis'].include? ar_adapter
             ["(#{@column} ILIKE ?)", @value]
           else
             ["(LOWER(#{@column}) LIKE ?)", @value]
@@ -251,6 +257,12 @@ module RailsAdmin
         def build_statement_for_enum
           return if @value.blank?
           ["(#{@column} IN (?))", Array.wrap(@value)]
+        end
+
+        def build_statement_for_uuid
+          if @value.to_s =~ /\A[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}\z/
+            column_for_value(@value)
+          end
         end
 
         def ar_adapter

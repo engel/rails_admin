@@ -22,21 +22,29 @@ ensure
 end
 
 silence_stream(STDOUT) do
-  ActiveRecord::Migrator.migrate File.expand_path('../../dummy_app/db/migrate/', __FILE__)
+  if ActiveRecord::Migrator.respond_to? :migrate
+    ActiveRecord::Migrator.migrate File.expand_path('../../dummy_app/db/migrate/', __FILE__)
+  else
+    ActiveRecord::MigrationContext.new(File.expand_path('../../dummy_app/db/migrate/', __FILE__)).migrate
+  end
 end
 
 class Tableless < ActiveRecord::Base
   class <<self
+    def load_schema
+      # do nothing
+    end
+
     def columns
       @columns ||= []
     end
 
     def column(name, sql_type = nil, default = nil, null = true)
       define_attribute(name.to_s,
-                       connection.lookup_cast_type(sql_type.to_s)) if ActiveRecord::VERSION::MAJOR >= 5
+                       connection.send(:lookup_cast_type, sql_type.to_s)) if ActiveRecord::VERSION::MAJOR >= 5
       columns <<
-        if connection.respond_to?(:lookup_cast_type)
-          ActiveRecord::ConnectionAdapters::Column.new(name.to_s, default, connection.lookup_cast_type(sql_type.to_s), sql_type.to_s, null)
+        if connection.respond_to?(:lookup_cast_type, true)
+          ActiveRecord::ConnectionAdapters::Column.new(name.to_s, default, connection.send(:lookup_cast_type, sql_type.to_s), sql_type.to_s, null)
         else
           ActiveRecord::ConnectionAdapters::Column.new(name.to_s, default, sql_type.to_s, null)
         end
