@@ -16,7 +16,7 @@ module RailsAdmin
     before_action :_authenticate!
     before_action :_authorize!
     before_action :_audit!
-    before_filter :_locale!
+    before_action :_locale!
 
     helper_method :_current_user, :_get_plugin_name
 
